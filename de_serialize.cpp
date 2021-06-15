@@ -3,6 +3,10 @@
 #include <unordered_map>
 #include <fstream>
 
+#define NODEtoNODE '|'
+#define VALtoFREQ '\\'
+#define ValNotLeaf '*'
+
 using namespace std;
 
 
@@ -19,7 +23,7 @@ class Node{
         Node(char val, int freq, bool leaf, Node* right, Node* left) : val(val), freq(freq), leaf(leaf), right(right), left(left){}
         // Construtor default
         Node(){
-            val = '*';
+            val = ValNotLeaf;
             freq = 0;
             leaf = false;
             right = nullptr;
@@ -35,7 +39,7 @@ class Node{
         //Construtor para nos intermediarios
         Node(int freq) : freq(freq){
 
-            val = '*';
+            val = ValNotLeaf;
             leaf = false;
             right = nullptr;
             left = nullptr;
@@ -54,6 +58,7 @@ class Tree{
         Node* tree_itr;
         string internal_text;
         unordered_map<char, string> dict;
+        unordered_map<char,int> in;
 
         // Constutor padrão para a codificação
         Tree(string text){
@@ -92,8 +97,8 @@ class Tree{
 
                 // Criar nó intermediario (não é folha)
                 Node* inter = new Node(least1->freq + least2->freq);
-                inter->right = least1;
-                inter->left = least2;
+                inter->left = least1;
+                inter->right = least2;
 
                 // Colocar no intermediario no heap
                 pq.push(inter);
@@ -109,10 +114,56 @@ class Tree{
             serialize();
         }
 
+        Tree(vector<pair<char,int>>* pre, vector<pair<char,int>>* sim){ // Construtor para o Deserialize
+            
+            in = unordered_map<char,int>();
+
+            for(int i=0;i<sim->size();i++)
+                in.insert({(*sim)[i].first, (*sim)[i].second}); // Inserindo os elementos de in order no map
+            
+            deserialize(pre, sim);
+            serialize();
+        }
+
         ~Tree(){
             
             delete_recursive(root);
             dict.clear();
+        }
+
+        // Escrever em vector a pre ordem e ordem simetrica
+       /* pair<*/vector<pair<char, int>> /*, vector<pair<char, int>>>*/ serialize(){
+
+            	vector<pair<char,int>>* pre = new vector<pair<char,int>>;
+                vector<pair<char,int>>* sim = new vector<pair<char,int>>;
+
+                Node* n = root;
+
+                if(n == nullptr) // Retornar se a arvo\re for vazia
+                //    return pair<*pre, *pre>; // Ajeitar return depois
+                    return *pre;
+
+                *pre = serialize_rec(n, pre, false);
+                *sim = serialize_rec(n, sim, true);
+
+                for (auto it = pre->begin(); it != pre->end(); ++it)
+                    cout << it->first << VALtoFREQ << it->second << NODEtoNODE;
+
+                cout << "\nIn-order:" << endl;
+
+                for (auto it = sim->begin(); it != sim->end(); ++it)
+                    cout << it->first << VALtoFREQ << it->second << NODEtoNODE;
+
+                cout << "chega no deserialize??" << endl;
+                deserialize(pre,sim);
+
+           /*     for (auto it = sim->begin(); it != sim->end(); ++it)
+                    pre->push_back({it->first, it->second});*/
+                
+                cout << "deu bom??" << endl;
+                serialize();
+
+                return *pre; // Ajeitar return depois
         }
 
         private:
@@ -147,24 +198,7 @@ class Tree{
                 root = nullptr;
             }
             
-            vector<pair<char, int>> serialize(){
-            	vector<pair<char,int>> *pre = new vector<pair<char,int>>;
-                vector<pair<char,int>> *sim = new vector<pair<char,int>>;
-
-                Node* n = root;
-
-                *pre = serialize_rec(n, pre, false);
-                *sim = serialize_rec(n, sim, true);
-
-                for (auto it = pre->begin(); it != pre->end(); ++it)
-                    cout << it->first << "/" << it->second << "-";
-
-                if(n == nullptr) // Retornar se a arvore for vazia
-                    return *pre; // Ajeitar return depois
-                
-                return *pre; // Ajeitar return depois
-            }
-            
+            // Recursão para o serialize
             vector<pair<char, int>> serialize_rec(Node* n, vector<pair<char, int>>* vet, bool order){
 
                 if(n == nullptr) // Retornar se a arvore for vazia
@@ -173,11 +207,13 @@ class Tree{
                 if(n->leaf)
                     vet->push_back({n->val, n->freq});
                 else{
+
                     serialize_rec(n->left, vet, order);
                     if(!order){ // Realiza a pré-ordem
                         serialize_rec(n->right, vet, order);
                         vet->push_back({n->val, n->freq});
-                    }else{ // Realiza a ordem simétrica
+                    }
+                    else{ // Realiza a ordem simétrica
                         vet->push_back({n->val, n->freq});
                         serialize_rec(n->right, vet, order);
                     }
@@ -185,15 +221,35 @@ class Tree{
                 
                 return *vet;
             }
+            // Ler vector em pre ordem e ordem simetrica e gerar a arvore
+            void deserialize(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim){
+
+                root = deserialize_rec(pre, sim, 0, pre->size()-1, 0);
+            }
+            // Recursao para o deserialize
+            Node* deserialize_rec(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim, int start, int end, int preIndex){
+                
+                if(start > end)
+                    return nullptr;
+
+                Node* n = new Node((*pre)[preIndex].first, (*pre)[preIndex].second); //we create a root node and insert preorder element to it
+
+                int inIndex = in[(*pre)[preIndex].first]; //We find that element in inorder through map and store its index
+
+                n->left = deserialize_rec(pre, sim, start, inIndex-1, preIndex+1); //constructing the left subtree
+                n->right = deserialize_rec(pre, sim, inIndex+1, end, preIndex+inIndex-start+1); //constructing the right subtree
+
+                return n;
+            }
 };
 
 
 int main(){
 
-    string text = "Por favor, alguem me ve um pastel de queijo com presunto";
+    string text = "aaabbbbbcccdddddddee gh";
     Tree* t = new Tree(text);
 
-    //t->serialize();
+ //   Tree* desr = Tree(t->serialize());
 
     return 0;
 }
