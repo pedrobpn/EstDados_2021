@@ -224,20 +224,32 @@ class Tree{
             // Ler vector em pre ordem e ordem simetrica e gerar a arvore
             void deserialize(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim){
 
+                cout << "pre->size(): " << pre->size() << endl;
                 root = deserialize_rec(pre, sim, 0, pre->size()-1, 0);
+
             }
             // Recursao para o deserialize
             Node* deserialize_rec(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim, int start, int end, int preIndex){
                 
-                if(start > end)
+                if(start > end){
+        //            cout << start << ">" << end << endl;
                     return nullptr;
+                }
 
-                Node* n = new Node((*pre)[preIndex].first, (*pre)[preIndex].second); //we create a root node and insert preorder element to it
+                Node* n = new Node((*pre)[preIndex].first, (*pre)[preIndex].second); // Cria nó
 
-                int inIndex = in[(*pre)[preIndex].first]; //We find that element in inorder through map and store its index
+        //        cout << "val:" << n->val << " \\ freq:" << n->freq << " \\ (*pre)[preIndex].first:" << (*pre)[preIndex].first <<endl; 
 
-                n->left = deserialize_rec(pre, sim, start, inIndex-1, preIndex+1); //constructing the left subtree
-                n->right = deserialize_rec(pre, sim, inIndex+1, end, preIndex+inIndex-start+1); //constructing the right subtree
+                int inIndex = in[(*pre)[preIndex].first]; // We find that element in inorder through map and store its index
+
+                if((*pre)[preIndex].first == ValNotLeaf){
+        //            cout << "foi?" << endl;
+                    n->leaf = false; // Se for nó intermediário, faz leaf=false;
+                    (*pre)[preIndex].first = NODEtoNODE;
+                }
+
+                n->left = deserialize_rec(pre, sim, start, inIndex-1, preIndex+1); // Constructing the left subtree
+                n->right = deserialize_rec(pre, sim, inIndex+1, end, preIndex+inIndex-start+1); // Constructing the right subtree
 
                 return n;
             }
