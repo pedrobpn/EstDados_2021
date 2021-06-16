@@ -2,6 +2,7 @@
 #include <queue>
 #include <unordered_map>
 #include <fstream>
+#include <bits/stdc++.h>
 
 #define NODEtoNODE '|'
 #define VALtoFREQ '\\'
@@ -58,7 +59,8 @@ class Tree{
         Node* tree_itr;
         string internal_text;
         unordered_map<char, string> dict;
-        unordered_map<char,int> in;
+        vector<pair<char,int>> pre_order;
+        vector<pair<char,int>> sim_order;
 
         // Constutor padrão para a codificação
         Tree(string text){
@@ -114,15 +116,11 @@ class Tree{
             serialize();
         }
 
-        Tree(vector<pair<char,int>>* pre, vector<pair<char,int>>* sim){ // Construtor para o Deserialize
-            
-            in = unordered_map<char,int>();
+        Tree(vector<pair<char, int>> pre, vector<pair<char, int>> sim){
 
-            for(int i=0;i<sim->size();i++)
-                in.insert({(*sim)[i].first, (*sim)[i].second}); // Inserindo os elementos de in order no map
-            
-            deserialize(pre, sim);
-            serialize();
+            pre_order = vector<pair<char, int>>(pre);
+            sim_order = vector<pair<char, int>>(sim);
+            deserialize();
         }
 
         ~Tree(){
@@ -132,38 +130,25 @@ class Tree{
         }
 
         // Escrever em vector a pre ordem e ordem simetrica
-       /* pair<*/vector<pair<char, int>> /*, vector<pair<char, int>>>*/ serialize(){
+       void serialize(){
 
-            	vector<pair<char,int>>* pre = new vector<pair<char,int>>;
-                vector<pair<char,int>>* sim = new vector<pair<char,int>>;
+            pre_order.clear();
+            sim_order.clear();
+            Node* n = root;
+            serialize_recursive(n, pre_order, sim_order);
+        }
 
-                Node* n = root;
+        // Ler vector em pre ordem e ordem simetrica e gerar a arvore
+        void deserialize(){
 
-                if(n == nullptr) // Retornar se a arvo\re for vazia
-                //    return pair<*pre, *pre>; // Ajeitar return depois
-                    return *pre;
-
-                *pre = serialize_rec(n, pre, false);
-                *sim = serialize_rec(n, sim, true);
-
-                for (auto it = pre->begin(); it != pre->end(); ++it)
-                    cout << it->first << VALtoFREQ << it->second << NODEtoNODE;
-
-                cout << "\nIn-order:" << endl;
-
-                for (auto it = sim->begin(); it != sim->end(); ++it)
-                    cout << it->first << VALtoFREQ << it->second << NODEtoNODE;
-
-                cout << "chega no deserialize??" << endl;
-                deserialize(pre,sim);
-
-           /*     for (auto it = sim->begin(); it != sim->end(); ++it)
-                    pre->push_back({it->first, it->second});*/
+            int pre_order_idx = 0;
+            map<pair<char, int>, int> sim_order_map;
+            for(int i = 0; i<sim_order.size(); i++){
+                sim_order_map[sim_order[i]] =i; 
+            }
                 
-                cout << "deu bom??" << endl;
-                serialize();
-
-                return *pre; // Ajeitar return depois
+            Node* aux = deserialize_recursive(sim_order_map, 0, pre_order.size()-1, pre_order_idx);
+            root = aux;
         }
 
         private:
@@ -199,59 +184,29 @@ class Tree{
             }
             
             // Recursão para o serialize
-            vector<pair<char, int>> serialize_rec(Node* n, vector<pair<char, int>>* vet, bool order){
+            void serialize_recursive(Node* n, vector<pair<char, int>>& pre_order, vector<pair<char, int>>& sim_order){
 
                 if(n == nullptr) // Retornar se a arvore for vazia
-                    return *vet; // Retorna o vector recebido
+                    return ;
                 
-                if(n->leaf)
-                    vet->push_back({n->val, n->freq});
-                else{
-
-                    serialize_rec(n->left, vet, order);
-                    if(!order){ // Realiza a pré-ordem
-                        serialize_rec(n->right, vet, order);
-                        vet->push_back({n->val, n->freq});
-                    }
-                    else{ // Realiza a ordem simétrica
-                        vet->push_back({n->val, n->freq});
-                        serialize_rec(n->right, vet, order);
-                    }
-                }
-                
-                return *vet;
+                pre_order.push_back({n->val, n->freq});
+                serialize_recursive(n->left, pre_order, sim_order);
+                sim_order.push_back({n->val, n->freq});
+                serialize_recursive(n->right, pre_order, sim_order);
             }
-            // Ler vector em pre ordem e ordem simetrica e gerar a arvore
-            void deserialize(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim){
 
-                cout << "pre->size(): " << pre->size() << endl;
-                root = deserialize_rec(pre, sim, 0, pre->size()-1, 0);
-
-            }
             // Recursao para o deserialize
-            Node* deserialize_rec(vector<pair<char,int>> *pre, vector<pair<char,int>> *sim, int start, int end, int preIndex){
-                
-                if(start > end){
-        //            cout << start << ">" << end << endl;
+            Node* deserialize_recursive(map<pair<char, int>, int>& sim_order_map, int left, int right, int& pre_order_idx){
+
+                if(left > right)
                     return nullptr;
-                }
+                
+                pair<char, int> rootValue = pre_order[pre_order_idx++];
+                Node* node = new Node(rootValue.first, rootValue.second);
 
-                Node* n = new Node((*pre)[preIndex].first, (*pre)[preIndex].second); // Cria nó
-
-        //        cout << "val:" << n->val << " \\ freq:" << n->freq << " \\ (*pre)[preIndex].first:" << (*pre)[preIndex].first <<endl; 
-
-                int inIndex = in[(*pre)[preIndex].first]; // We find that element in inorder through map and store its index
-
-                if((*pre)[preIndex].first == ValNotLeaf){
-        //            cout << "foi?" << endl;
-                    n->leaf = false; // Se for nó intermediário, faz leaf=false;
-                    (*pre)[preIndex].first = NODEtoNODE;
-                }
-
-                n->left = deserialize_rec(pre, sim, start, inIndex-1, preIndex+1); // Constructing the left subtree
-                n->right = deserialize_rec(pre, sim, inIndex+1, end, preIndex+inIndex-start+1); // Constructing the right subtree
-
-                return n;
+                node->left = deserialize_recursive(sim_order_map, left, sim_order_map[rootValue] - 1, pre_order_idx);
+                node->right = deserialize_recursive(sim_order_map, sim_order_map[rootValue] + 1, right, pre_order_idx);
+                return node;
             }
 };
 
@@ -260,6 +215,13 @@ int main(){
 
     string text = "aaabbbbbcccdddddddee gh";
     Tree* t = new Tree(text);
+    t->serialize();
+
+    Tree* t2 = new Tree(t->pre_order, t->sim_order);
+    t2->serialize();
+
+
+    
 
  //   Tree* desr = Tree(t->serialize());
 

@@ -3,20 +3,21 @@
 #include <unordered_map>
 #include <fstream>
 
-using namespace std;
+#include<bits/stdc++.h>
 
+using namespace std;
 
 class Node{
 
     public:
-        char val;
+        int val;
         int freq;
         bool leaf;
         Node* right;
         Node* left;
 
         // Construtor completo
-        Node(char val, int freq, bool leaf, Node* right, Node* left) : val(val), freq(freq), leaf(leaf), right(right), left(left){}
+        Node(int val, int freq, bool leaf, Node* right, Node* left) : val(val), freq(freq), leaf(leaf), right(right), left(left){}
         // Construtor default
         Node(){
             val = '*';
@@ -26,7 +27,7 @@ class Node{
             left = nullptr;
         }
         // Construtor para folhas
-        Node(char val, int freq) : val(val), freq(freq){
+        Node(int val, int freq) : val(val), freq(freq){
 
             leaf = true;
             right = nullptr;
@@ -54,6 +55,8 @@ class Tree{
         Node* tree_itr;
         string internal_text;
         unordered_map<char, string> dict;
+        vector<pair<int,int>> pre_order;
+        vector<pair<int,int>> sim_order;
 
         // Constutor padrão para a codificação
         Tree(string text){
@@ -68,7 +71,7 @@ class Tree{
             };
             priority_queue<Node*, vector<Node*>, decltype(comp)> pq(comp);
 
-            unordered_map<char, int> freq_chars; //map letra -> frequencia
+            unordered_map<int, int> freq_chars; //map letra -> frequencia
 
             // Calcular frequencias de cada letra
             for(auto itr = text.begin(); itr != text.end(); ++itr)
@@ -81,6 +84,7 @@ class Tree{
                 pq.push(aux);
             }
 
+            int leafy = 256;
             // Construir a arvore
             while(pq.size() > 1){
 
@@ -92,13 +96,15 @@ class Tree{
 
                 // Criar nó intermediario (não é folha)
                 Node* inter = new Node(least1->freq + least2->freq);
+                inter->val = leafy;
                 inter->right = least1;
                 inter->left = least2;
 
                 // Colocar no intermediario no heap
                 pq.push(inter);
+                leafy++;
             }
-
+            
             // O que sobrar no heap será o root
             root = pq.top();
             pq.pop();
@@ -108,10 +114,43 @@ class Tree{
             make_dict(root, "");
         }
 
+        Tree(vector<pair<int, int>> pre, vector<pair<int, int>> sim){
+
+            pre_order = vector<pair<int, int>>(pre);
+            sim_order = vector<pair<int, int>>(sim);
+
+            deserialize();
+            //Construir o dicionario
+            dict = unordered_map<char, string>();
+            make_dict(root, "");
+        }
+
         ~Tree(){
             
             delete_recursive(root);
             dict.clear();
+        }
+
+        // Escrever em vector a pre ordem e ordem simetrica
+       void serialize(){
+
+            pre_order.clear();
+            sim_order.clear();
+            Node* n = root;
+            serialize_recursive(n, pre_order, sim_order);
+        }
+
+        // Ler vector em pre ordem e ordem simetrica e gerar a arvore
+        void deserialize(){
+
+            int pre_order_idx = 0;
+            map<pair<int, int>, int> sim_order_map;
+            for(int i = 0; i<sim_order.size(); i++){
+                sim_order_map[sim_order[i]] =i;
+            }
+                
+            Node* aux = deserialize_recursive(sim_order_map, 0, pre_order.size()-1, pre_order_idx);
+            root = aux;
         }
 
         string encode(string original){
@@ -141,7 +180,7 @@ class Tree{
                     return ;
                 
                 // Se for uma folha, colocar no dicionario
-                if(n->leaf)
+                if(n->val <256)
                     dict[n->val] = (s.empty())? "1":s;                    
 
                 // Continuando o dfs
@@ -156,7 +195,7 @@ class Tree{
                     return ;
     
                 // Achou uma folha
-                if(n->leaf){
+                if(n->val < 256){
                     
                     // Adicionar char na string
                     t += n->val;
@@ -191,34 +230,142 @@ class Tree{
                 root = nullptr;
             }
             
-            vector<pair<char, int>> serialize(Tree t, bool order){
-            	vector<pair<char,int>> *pre;
-                vector<pair<char,int>> *sim;
+            // Recursão para o serialize
+            void serialize_recursive(Node* n, vector<pair<int, int>>& pre_order, vector<pair<int, int>>& sim_order){
 
+                if(n == nullptr) // Retornar se a arvore for vazia
+                    return ;
 
+                pre_order.push_back({n->val, n->freq});
+                serialize_recursive(n->left, pre_order, sim_order);
+                sim_order.push_back({n->val, n->freq});
+                serialize_recursive(n->right, pre_order, sim_order);
+            }
 
+            // Recursao para o deserialize
+            Node* deserialize_recursive(map<pair<int, int>, int>& sim_order_map, int left, int right, int& pre_order_idx){
 
+                if(left > right)
+                    return nullptr;
 
-			}
+                pair<int, int> rootValue = pre_order[pre_order_idx++];
+                Node* n = new Node(rootValue.first, rootValue.second);
             
+                n->left = deserialize_recursive(sim_order_map, left, sim_order_map[rootValue] - 1, pre_order_idx);
+                n->right = deserialize_recursive(sim_order_map, sim_order_map[rootValue] + 1, right, pre_order_idx);
+                return n;
+            }          
 };
+
+string vec_to_string(vector<pair<int, int>>& v){
+
+    string res = "";
+
+    for(auto u: v)
+        res = res + to_string(u.first) + "," + to_string(u.second) + ',';
+    return res;
+}
+
+vector<pair<int, int>> string_to_vec(string& s){
+
+    vector<pair<int, int>> res;
+
+    int pos = 0;
+    while ((pos = s.find(",")) != string::npos) {
+
+        pair<int, int> partial;
+
+        string token = s.substr(0, pos);
+        partial.first = stoi(token);
+        s.erase(0, pos + string(",").length());
+
+        pos = s.find(",");
+        token = s.substr(0, pos);
+        partial.second = stoi(token);
+        s.erase(0, pos + string(",").length());
+
+        res.push_back(partial);
+    }
+
+    return res;
+}
+
 
 
 int main(){
 
-    string text = "Por favor, alguem me ve um pastel de queijo com presunto ao vivo no show do willson zuthan ao year 123! # salve nois krl *** uauauau";
-    Tree* t = new Tree(text);
-    string enc = t->encode(text);
+    int option = 0;
 
-    cout << "ORIGINAL: " << text << "\n";
+    cout << "Digite 1 para codificar e 2 para decodificar: \n";
+    cin >> option;
 
-    cout << "ENCODED: "<< enc << "\n";
+    if(option==1){
 
-    string dec = t->decode(enc);
+        std::ifstream in("input.txt");
+        std::stringstream buffer;
+        buffer << in.rdbuf();
+        string text = buffer.str();
+        in.close();
 
-    cout <<"DECODED: "<< dec << "\n";
+        Tree* t = new Tree(text);
+        string enc  = t->encode(text);
+        t->serialize();
+        vector<pair<int, int>> pre_order = t->pre_order;
+        vector<pair<int, int>> sim_order = t->sim_order;
 
-    delete t;
+        string pre_s = vec_to_string(pre_order);
+        string sim_s = vec_to_string(sim_order);
+
+        ofstream tree_file("arvhuf.txt");
+        ofstream text_file("texto.hfm");
+        tree_file << pre_s << "\n" << sim_s;
+        text_file << enc;
+        tree_file.close();
+        text_file.close();
+
+        // Escrever no arquivo .ctx
+        ofstream Fctx("binary.ctx");
+
+        int i=0;
+        for(i=0; i < text.size(); i++)
+            Fctx << bitset<8>(text[i]).to_string();
+        Fctx.close();
+
+        delete t;
+    }
+    else if(option==2){
+
+        ifstream tree("arvhuf.txt");
+        string pre_s;
+        string sim_s;
+        
+        getline(tree, pre_s);
+        getline(tree, sim_s);
+        tree.close();
+
+        vector<pair<int, int>> pre_order;
+        vector<pair<int, int>> sim_order;
+
+        pre_order = string_to_vec(pre_s);
+        sim_order = string_to_vec(sim_s);
+
+        Tree* t = new Tree(pre_order, sim_order);
+
+        ifstream text_file("texto.hfm");
+        string enc;
+        getline(text_file, enc);
+        text_file.close();
+
+        ofstream output_file("saida.txt");
+        output_file << t->decode(enc);
+        output_file.close();
+
+        delete t;
+    }
+    else
+        return 0;
+    
+    
 
 
 }
