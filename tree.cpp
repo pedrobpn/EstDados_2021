@@ -74,17 +74,18 @@ class Tree{
             unordered_map<int, int> freq_chars; //map letra -> frequencia
 
             // Calcular frequencias de cada letra
-            for(auto itr = text.begin(); itr != text.end(); ++itr)
-                freq_chars[*itr]++;
-            
-            // Alocar Nodes e colocar na priority_queue
-            for(auto itr = freq_chars.begin(); itr != freq_chars.end(); ++itr){
+            for(int i = 0; i < text.size(); i++){
+                freq_chars[text[i]]++;
+            }
 
-                Node* aux = new Node(itr->first, itr->second);
+            // Alocar Nodes e colocar na priority_queue
+            for(auto itr:freq_chars){
+
+                Node* aux = new Node(itr.first, itr.second);
                 pq.push(aux);
             }
 
-            int leafy = 256;
+            int leafy = 257;
             // Construir a arvore
             while(pq.size() > 1){
 
@@ -110,7 +111,7 @@ class Tree{
             pq.pop();
 
             //Construir o dicionario
-            dict = unordered_map<char, string>();
+            dict.clear();
             make_dict(root, "");
         }
 
@@ -180,12 +181,15 @@ class Tree{
                     return ;
                 
                 // Se for uma folha, colocar no dicionario
-                if(n->val <256)
-                    dict[n->val] = (s.empty())? "1":s;                    
-
+                if(n->val <256){
+                    
+                    dict[n->val] = (s.empty())? "0":s; 
+                    return ;
+                }
+                                       
                 // Continuando o dfs
-                make_dict(n->left, s + "1");
-                make_dict(n->right, s + "0");                
+                make_dict(n->left, s + "0");
+                make_dict(n->right, s + "1");                
             }
             // Sub rotina para decodificar string
             void dfs_decode(Node* n, string& s, string& t, int i){
@@ -210,7 +214,7 @@ class Tree{
                 }
                 
                 // Escolher se vai para esquerda ou direita
-                if(s[i] == '0')
+                if(s[i] == '1')
                     dfs_decode(n->right, s, t, i+1);
                 else
                     dfs_decode(n->left, s, t, i+1);
@@ -302,9 +306,8 @@ int main(){
     if(option==1){
 
         std::ifstream in("input.txt");
-        std::stringstream buffer;
-        buffer << in.rdbuf();
-        string text = buffer.str();
+        std::string text( (std::istreambuf_iterator<char>(in) ),
+                       (std::istreambuf_iterator<char>()    ) );
         in.close();
 
         Tree* t = new Tree(text);
@@ -365,31 +368,4 @@ int main(){
     else
         return 0;
     
-    
-
-
 }
-
-
-/*
-
-Métodos de Tree 
-
-serialize() -> gerar dois vetores -> 1) percorrer arvore em ordem simetrica 2) Percorrer em pre ordem 3) vector<pair<char, int>> se 
-for nó intermediario, colocar *
-
-deserialize() -> pegar os dois vetores e gerar a arvore -> usar make_dict() para preecnher o dicionario e criar um construtor extra para isso Tree(string inorder, string preorder)
-
-https://www.geeksforgeeks.org/construct-tree-from-given-inorder-and-preorder-traversal/
-
-Tansformar vetor de 1 em:
-a\1|b\5|c\3
-a\1|b\5|c\3
-
-TRansformar a\1|b\5|c\3 em vetor
-
-Ler as strings do arquivo e fazer a arvore
-Escrever string no arquivo
-
-
-*/
