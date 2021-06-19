@@ -43,11 +43,6 @@ class Node{
         }
 };
 
-/*
-http://huffman.ooz.ie/?text=oabbbb
-GROUND TRUTH ^^^^
-*/
-
 class Tree{
     
     public:
@@ -98,8 +93,8 @@ class Tree{
                 // Criar nó intermediario (não é folha)
                 Node* inter = new Node(least1->freq + least2->freq);
                 inter->val = leafy;
-                inter->right = least1;
-                inter->left = least2;
+                inter->left = least1;
+                inter->right = least2;
 
                 // Colocar no intermediario no heap
                 pq.push(inter);
